@@ -1,18 +1,8 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { Link, Tabs } from 'expo-router';
-import { Pressable, useColorScheme } from 'react-native';
-
+import { Pressable, useColorScheme, StyleSheet } from 'react-native';
 import Colors from '../../constants/Colors';
-
-/**
- * You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
- */
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
-}
+import { scalefontSize } from '../../utils/style';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -21,35 +11,32 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarStyle: {
+          height: scalefontSize(5)
+        }
+        
       }}>
       <Tabs.Screen
-        name="index"
+        name="chatWelcome"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? 'light'].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
+          title: '聊天室',
+          tabBarIcon: ({ color }) => <Ionicons name="chatbox-ellipses-outline" size={scalefontSize(2)} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="me"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: "我的",
+          tabBarIcon: ({ color }) => <Feather name="user" size={scalefontSize(2)} color={color} />,
+          headerShown: false
         }}
       />
     </Tabs>
   );
 }
+
+const style = StyleSheet.create({
+  tabIcon: {
+     
+  }
+})

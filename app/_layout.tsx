@@ -4,6 +4,11 @@ import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from 'expo-router';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import { AuthProvider } from "../context/auth"
+import Loading from '../components/custome/loading';
+import { Provider as PaperProvider } from 'react-native-paper';
+import { LoadingProvider } from '../context/loadingProvider';
+import { RootSiblingParent } from 'react-native-root-siblings';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -40,12 +45,22 @@ function RootLayoutNav() {
 
   return (
     <>
+    <AuthProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-        </Stack>
+      <PaperProvider>
+        <LoadingProvider>
+          <RootSiblingParent>
+          <Stack>
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+              <Stack.Screen name="chat" options={{ headerShown: false }} />
+            </Stack>
+            </RootSiblingParent>
+        </LoadingProvider>
+        </PaperProvider>
       </ThemeProvider>
+      </AuthProvider>
     </>
   );
 }
