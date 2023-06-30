@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import React from "react";
 import { utils } from "../utils";
 import constant from 'expo-constants';
+import { storage } from "../utils/store";
 
 interface authContextValues {
   signIn: (userInfo: jwtUserInfo) => void,
@@ -22,7 +23,6 @@ export function useAuth() {
 function useProtectedRoute(user: userInfoType) {
     const segments = useSegments();
     const router = useRouter();
-    console.log(segments)
 
     React.useEffect(() => {
         const inAuthGroup = segments[0] === "(auth)";
@@ -50,7 +50,6 @@ export function AuthProvider(props: { children: React.ReactNode }) {
     React.useEffect(() => {
       (async () => {
         let jwtToken = null
-        console.log(constant.platform)
         if(constant.platform?.ios){
           jwtToken = await SecureStore.getItemAsync("jwt-token")
         }else if(constant.platform?.web){
@@ -73,12 +72,14 @@ export function AuthProvider(props: { children: React.ReactNode }) {
     }, [])
   
     useProtectedRoute(user);
-  
     return (
       <AuthContext.Provider
         value={{
           signIn: (userInfo: jwtUserInfo) => setAuth(userInfo),
-          signOut: () => setAuth(null),
+          signOut: () => {
+            storage.delete("jwt-token")
+            setAuth(null)
+          },
           user,
         }}
       >

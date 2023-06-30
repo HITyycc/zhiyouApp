@@ -15,5 +15,13 @@ export const storage = {
           }else if(constant.platform?.web){
             return localStorage.setItem(key, value)
           }
+    },
+    delete:async (key: string) => {
+      if(constant.platform?.ios){
+        return await SecureStore.deleteItemAsync(key)
+      }else if(constant.platform?.web){
+        return localStorage.removeItem(key)
+      }
     }
+
 }

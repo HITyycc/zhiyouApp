@@ -52,19 +52,17 @@ const InputSmsCode = () => {
           code: code.join("")
           })
           await storage.set("jwt-token", res.headers['authorization'] ?? res.headers.toJSON)
-          console.log(res)
           const jwtToken = res.headers['authorization'].split(".")[1]
           const jwtObj = JSON.parse(utils.base64ToUtf8(jwtToken))
           const userData: jwtUserInfo = {
             userId: jwtObj.userId,
-            avatarUrl: jwtObj.nickname,
+            avatarUrl: jwtObj.avatarUrl,
             nickname: jwtObj.nickname
           }
           auth?.signIn(userData)
           showToast("登录成功", "success")
           router.replace("(tabs)")
         }catch(err){
-          console.log(err)
           if(err instanceof AxiosError){
             if(err.response?.data.errorCode == 1){
               showToast("验证码已过期", "fail")

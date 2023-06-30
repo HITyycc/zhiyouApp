@@ -1,15 +1,39 @@
 import { StyleSheet } from 'react-native';
 
-import EditScreenInfo from '../../../components/EditScreenInfo';
-import { Text, View } from '../../../components/Themed';
-import { Link } from 'expo-router';
+import { Text, View, Image } from 'react-native';;
+import { styleUtils } from '../../../utils';
+import { CustomButton } from '../../../components/custome/CustomButton';
+import { useAuthAxios } from "../../../context/authAxiosProvider"
+import { useEffect } from 'react';
+import React from 'react';
+import { useRouter } from 'expo-router';
 
-export default function TabOneScreen() {
+export default function ChatWelcome() {
+  const [chatId, setChatId] = React.useState("")
+  const authAxios = useAuthAxios()
+  const route = useRouter()
+
+  useEffect(() => {
+    (async () => {
+      const res = await authAxios?.authAxios.get("http://10.249.41.229:3010/chat/getConversationList")
+      if(res?.data.data.conversationList.length == 0){
+        // 为用户创建一个会话
+        const res = await authAxios?.authAxios.get("http://10.249.41.229:3010/chat/createnewconveration")
+        setChatId(res?.data.data.newId)
+      }else{
+        setChatId(res?.data.data.conversationList[0].conversation_id)
+      }
+    })()
+  }, [])
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Tab One</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <Link href={"/chat"}>linkHere</Link>
+      <Image style={styles.robot} source={require("../../../assets/images/chat/robot.png")} />
+      <CustomButton title='点击与他聊天' width={141} color='white' onPress={() => {
+        if(chatId){
+          route.push(`/chat/${chatId}`)
+        }
+      }} backgroundColor='#73B5FF' />
     </View>
   );
 }
@@ -17,16 +41,13 @@ export default function TabOneScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "white",
+    alignItems: "center",
+    paddingTop: styleUtils.pTx(38),
+    rowGap: styleUtils.pTx(30)
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
-  },
+  robot: {
+    width: styleUtils.pTx(132),
+    height: styleUtils.pTx(132)
+  }
 });

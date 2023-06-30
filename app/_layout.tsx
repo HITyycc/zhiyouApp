@@ -1,28 +1,32 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
-import { SplashScreen, Stack } from 'expo-router';
-import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
-import { AuthProvider } from "../context/auth"
-import Loading from '../components/custome/loading';
-import { Provider as PaperProvider } from 'react-native-paper';
-import { LoadingProvider } from '../context/loadingProvider';
-import { RootSiblingParent } from 'react-native-root-siblings';
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from "@react-navigation/native";
+import { useFonts } from "expo-font";
+import { SplashScreen, Stack } from "expo-router";
+import { useEffect } from "react";
+import { useColorScheme } from "react-native";
+import { AuthProvider } from "../context/auth";
+import { AuthAxiosProvider } from "../context/authAxiosProvider"
+import { Provider as PaperProvider } from "react-native-paper";
+import { LoadingProvider } from "../context/loadingProvider";
+import { RootSiblingParent } from "react-native-root-siblings";
 
 export {
   // Catch any errors thrown by the Layout component.
   ErrorBoundary,
-} from 'expo-router';
+} from "expo-router";
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: '(tabs)',
+  initialRouteName: "(tabs)",
 };
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
     ...FontAwesome.font,
   });
 
@@ -45,21 +49,43 @@ function RootLayoutNav() {
 
   return (
     <>
-    <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <PaperProvider>
-        <LoadingProvider>
-          <RootSiblingParent>
-          <Stack>
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="chat" options={{ headerShown: false }} />
-            </Stack>
-            </RootSiblingParent>
-        </LoadingProvider>
-        </PaperProvider>
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider
+          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+        >
+          <PaperProvider settings={{
+            rippleEffectEnabled: false
+          }}>
+            <LoadingProvider>
+              <RootSiblingParent>
+                <AuthAxiosProvider>
+                  <Stack>
+                    <Stack.Screen
+                      name="index"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="(tabs)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="(auth)"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="chat"
+                      options={{ headerShown: false }}
+                    />
+                    <Stack.Screen
+                      name="meTab"
+                      options={{ headerShown: false }}
+                    />
+                  </Stack>
+                </AuthAxiosProvider>
+              </RootSiblingParent>
+            </LoadingProvider>
+          </PaperProvider>
+        </ThemeProvider>
       </AuthProvider>
     </>
   );

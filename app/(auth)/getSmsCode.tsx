@@ -36,7 +36,6 @@ const GetSmsCode = () => {
                     loading?.hideLoading()
                     if(err instanceof AxiosError){
                         if(err.response?.data.errorCode == 1){
-                            console.log(err.response?.data.message)
                             showToast("过于频繁获取验证码", "fail")
                         }
                     }

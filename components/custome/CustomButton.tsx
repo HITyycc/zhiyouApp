@@ -9,7 +9,7 @@ interface CustomButtonProps{
     color?: string,
     title: string,
     backgroundColor?: string,
-    onPress: () => void,
+    onPress?: () => void,
     style?: ViewStyle,
     disabled?: boolean
 }
@@ -21,12 +21,12 @@ export const CustomButton = (props: CustomButtonProps) => {
                 height: scalefontSize(3),
                 justifyContent: "center",
                 width: pTx(props.width),
-                color: props.color ?? 'black',
                 backgroundColor: props.backgroundColor ?? "white",
                 borderRadius: 50
             },
             text: {
                 textAlign: "center",
+                color: props.disabled? "#fafafa":(props.color ?? 'black'),
             },
             disabled: {
                 color: "#dddddd",

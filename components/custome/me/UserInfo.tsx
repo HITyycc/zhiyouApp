@@ -4,16 +4,18 @@ import { scalefontSize } from "../../../utils/style"
 
 interface userInfoProps {
     nickName: string,
-    avatarUrl: string
+    avatarUrl: string,
+    onPress?: () => void
 }
 
 export const UserInfo = ({
     nickName,
-    avatarUrl
+    avatarUrl,
+    onPress
 }: userInfoProps) => {
-    return <List.Item right={() => <Text style={style.rightStyle}>个人资料 {">"}</Text>} title={nickName} titleStyle={style.titleStyle} left={() => avatarUrl === "" ? <Avatar.Text style={{backgroundColor: MD2Colors.green100}} label={nickName.slice(0, 1)} />: <Avatar.Image source={{
+    return <List.Item onPress={onPress} right={() => <Text style={style.rightStyle}>个人资料 {"›"}</Text>} title={nickName} titleStyle={style.titleStyle} left={() => avatarUrl ?  <Avatar.Image source={{
         uri: avatarUrl
-    }} />} />
+    }} />:<Avatar.Text style={{backgroundColor: MD2Colors.green100}} label={nickName.slice(0, 1)} />} />
 }
 
 const style = StyleSheet.create({
@@ -22,7 +24,7 @@ const style = StyleSheet.create({
         fontWeight: "bold"
     },
     rightStyle: {
-
+        color: MD2Colors.grey600
     }
 
 })
