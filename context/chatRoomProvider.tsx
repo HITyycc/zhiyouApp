@@ -6,7 +6,7 @@ import { useAuth } from "./auth";
 import EventSource, {
   EventSourceListener,
   ErrorEvent as sseErrorEvent,
-  MessageEvent as sseMessageEvent
+  MessageEvent as sseMessageEvent,
 } from "react-native-sse";
 import { showToast } from "../utils/utils";
 
@@ -54,6 +54,7 @@ interface chatProviderValues {
   loadingMessage: string;
   isLoadingMessage: boolean;
   handleSendMessage: (message: string) => void;
+  es: EventSource | null;
 }
 
 const chatContext = React.createContext<null | chatProviderValues>(null);
@@ -77,27 +78,18 @@ export const ChatContextProvider = (props: {
   const [loadingMessage, setLoadingMessage] = React.useState("");
   const [isLoadingMessage, setIsLoadingMessage] = React.useState(false);
   const auth = useAuth();
-  const [es, setEs] = React.useState<EventSource|null>(null)
+  const [es, setEs] = React.useState<EventSource | null>(null);
 
   React.useEffect(() => {
-    const timer = setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd() // 需要在布局完成后调用
-    }, 0)
-    return () => {
-      clearTimeout(timer)
-    }
-  }, [chatContentList, scrollViewRef.current])
-
-  React.useEffect(() => {
-    if(loadingMessage.length != 0){
+    if (loadingMessage.length != 0) {
       const timer = setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd() // 需要在布局完成后调用
-      }, 0)
+        scrollViewRef.current?.scrollToEnd(); // 需要在布局完成后调用
+      }, 0);
       return () => {
-        clearTimeout(timer)
-      }
+        clearTimeout(timer);
+      };
     }
-  }, [loadingMessage.length == 0])
+  }, [loadingMessage.length == 0]);
 
   const handleSendMessage = async (message: string) => {
     dispatch({
@@ -107,82 +99,84 @@ export const ChatContextProvider = (props: {
         content: message,
       },
     });
-    setEs(new EventSource(
-        "http://10.249.41.229:3010/chat/getChatGptResponse",
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: (await storage.get("jwt-token")) as string,
-          },
-          method: "POST",
-          body: JSON.stringify({
-            chatId: props.chatId,
-            message,
-          }),
-        }
-      )) 
+    setEs(
+      new EventSource("http://10.249.41.229:3010/chat/getChatGptResponse", {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: (await storage.get("jwt-token")) as string,
+        },
+        method: "POST",
+        body: JSON.stringify({
+          chatId: props.chatId,
+          message,
+        }),
+      })
+    );
   };
 
   React.useEffect(() => {
-    if(es){
-        const handleOpen: EventSourceListener = (event) => {
-          };
-      
-          const handleMessage: EventSourceListener = (event) => {
-              const data = (event as sseMessageEvent).data
-                if((data as string).includes("[DONE]")){
-                    es.close()
-                }else{
-                    console.log(data)
-                    setLoadingMessage(pre => pre+data?.slice(1))
-                }
-              
-          };
-      
-          const handleError: EventSourceListener = (event) => {
-            es.close()
-            if ((event as sseErrorEvent).xhrStatus == 401) {
-              showToast("用户未登录", "fail")
-              auth?.signOut()
-            }
-          };
-      
-          const handleClose: EventSourceListener = (event) => {
-            setIsLoadingMessage(false)
-            setLoadingMessage(pre => {
-                dispatch({
-                    type: "add",
-                    chatContent: {
-                        role: "assistant",
-                        content: pre
-                    }
-                })
-                return ""
-            })
-          };
-          es.addEventListener("open", handleOpen);
-          es.addEventListener("message", handleMessage);
-          es.addEventListener("error", handleError);
-          es.addEventListener("close", handleClose);
+    if (es) {
+      const handleOpen: EventSourceListener = (event) => {};
+
+      const handleMessage: EventSourceListener = (event) => {
+        const data = (event as sseMessageEvent).data;
+        if ((data as string).includes("[DONE]")) {
+          es.close();
+        } else {
+          setLoadingMessage((pre) => pre + data?.slice(1));
+        }
+      };
+
+      const handleError: EventSourceListener = (event) => {
+        es.close();
+        if ((event as sseErrorEvent).xhrStatus == 401) {
+          showToast("用户未登录", "fail");
+          auth?.signOut();
+        }
+      };
+
+      const handleClose: EventSourceListener = (event) => {
+        setIsLoadingMessage(false);
+        setLoadingMessage((pre) => {
+          dispatch({
+            type: "add",
+            chatContent: {
+              role: "assistant",
+              content: pre,
+            },
+          });
+          setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd(); // 需要在布局完成后调用
+          }, 0);
+          return "";
+        });
+      };
+      es.addEventListener("open", handleOpen);
+      es.addEventListener("message", handleMessage);
+      es.addEventListener("error", handleError);
+      es.addEventListener("close", handleClose);
     }
     return () => {
-        setIsLoadingMessage(true)
-        setLoadingMessage(pre => {
-            dispatch({
-                type: "add",
-                chatContent: {
-                    role: "assistant",
-                    content: pre
-                }
-            })
-            return ""
-        })
-        if(es){
-            es.removeAllEventListeners()
-            es.close()
-        }
-    }
-  }, [es])
+      setIsLoadingMessage(true);
+      setLoadingMessage((pre) => {
+        dispatch({
+          type: "add",
+          chatContent: {
+            role: "assistant",
+            content: pre,
+          },
+        });
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd(); // 需要在布局完成后调用
+        }, 0);
+        return "";
+      });
+      if (es) {
+        es.removeAllEventListeners();
+        es.close();
+      }
+    };
+  }, [es]);
 
   React.useEffect(() => {
     (async () => {
@@ -195,6 +189,9 @@ export const ChatContextProvider = (props: {
           chatContentList: [sayHi, ...res?.data.data.chatContentList],
           scrollViewRef,
         });
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd(); // 需要在布局完成后调用
+        }, 0);
       }
     })();
   }, [props.chatId]);
@@ -208,7 +205,8 @@ export const ChatContextProvider = (props: {
         scrollViewRef,
         loadingMessage,
         handleSendMessage,
-        isLoadingMessage
+        isLoadingMessage,
+        es,
       }}
     >
       {props.children}

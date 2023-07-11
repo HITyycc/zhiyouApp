@@ -62,20 +62,33 @@ const UserInput = () => {
           ) : null
         }
       />
-      <IconButton
-        size={pTx(14)}
-        disabled={textValue.length == 0 || chatContext?.isLoadingMessage}
-        onPress={() => {
-          setTextValue("");
-          chatContext?.handleSendMessage(textValue);
-        }}
-        icon="arrow-up"
-        mode="contained"
-        containerColor={
-          textValue.length == 0 ? MD2Colors.blue100 : MD2Colors.blue600
-        }
-        iconColor="white"
-      />
+      {chatContext?.isLoadingMessage ? (
+        <IconButton
+          size={pTx(14)}
+          onPress={() => {
+            chatContext?.es?.close();
+          }}
+          mode="contained"
+          icon="square-medium"
+          iconColor="white"
+          containerColor={MD2Colors.blue600}
+        />
+      ) : (
+        <IconButton
+          size={pTx(14)}
+          disabled={textValue.length == 0 || chatContext?.isLoadingMessage}
+          onPress={() => {
+            setTextValue("");
+            chatContext?.handleSendMessage(textValue);
+          }}
+          icon="arrow-up"
+          mode="contained"
+          containerColor={
+            textValue.length == 0 ? MD2Colors.blue100 : MD2Colors.blue600
+          }
+          iconColor="white"
+        />
+      )}
     </View>
   );
 };
