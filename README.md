@@ -20,7 +20,7 @@
 - 前端（Expo, React Hook, Typescript, Expo-Router, React-Native-paper, Axios, SSE, Lottie）
 - 后端（Koa, Typescript, Ioredis, Mysql2, Koa-Jwt, @Alicloud）
 
-🔑额外说明：此仓库只包含前端代码，后端代码见仓库
+🔑额外说明：此仓库只包含前端代码，后端代码见仓库[](https://github.com/HITyycc/koa-zhiyou)
 
 ## 项目演示
 （1）手机号短信验证码登录&emsp;&emsp;&emsp;&emsp;（2）流式生成回答、中断流式回答、联系上下文回答
@@ -30,7 +30,8 @@
 ## 目录
 - [项目介绍](#项目介绍)
 - [项目目录结构](#项目目录结构)
-- [功能点介绍](功能点介绍)
+- [功能点介绍](#功能点介绍)
+- [运行步骤](#运行步骤)
 
 ## 项目主要目录结构
 ```
@@ -177,8 +178,161 @@ const queryString: string = `INSERT INTO userConversations (user_id) values (?);
 await ctx.mysql.query(queryString, [id]);
   ```
 
+## 运行步骤
 
+### 下载前端、后端代码和Docker（用于运行mysql和redis服务）
 
+```
+// expo前端项目
+git clone https://github.com/HITyycc/zhiyouApp.git
+cd zhiyouApp
+npm install
+cd ..
 
+// koa后端项目
+git clone https://github.com/HITyycc/koa-zhiyou.git
+cd koa-zhiyou
+npm install
+```
+安装 [Docker Desktop] (https://www.docker.com/products/docker-desktop/) 
 
+```
+docker pull mysql:latest
+docker pull redis:latest
+
+ // 运行mysql容器，其中声明了管理员root的密码为123456
+docker run -itd --name mysql-zhiyou -p 3306:3306 -e MYSQL_ROOT_PASSWORD=123456 mysql
+
+// 运行redis容器
+docker run -itd --name redis-zhiyou -p 6379:6379 redis
+```
+
+### 阿里云sms和openai接口服务申请
+
+- [阿里云sms短信服务](https://cn.aliyun.com/product/sms)申请：参考官方文档，并申请sms接口服务的AccessKey和AccessSecret（这里选择阿里云是因为阿里云可以给不上线的应用程序提供sms服务）
+
+- openAI ChatGPT api：申请一个ChatGPT账号后，进入[openai-ChatGPT官网](https://openai.com/chatgpt)，登录后在个人主页创建[API key](https://platform.openai.com/account/api-keys)
+
+### mysql数据库创建
+
+- 创建数据库
+
+```sql
+CREATE DATABASE zhiyouDb;
+USE zhiyouDb;
+```
+- 创建对zhiyouDb可有管理权限的账号
+
+```sql
+CREATE USER 'zhiyouManager'@'localhost' IDENTIFIED BY '123456';
+GRANT ALL PRIVILEGES ON `zhiyouDb`.* TO 'zhiyouManager'@'localhost';
+FLUSH PRIVILEGES;
+```
+
+- 创建用户信息表
+
+| 字段 | 备注 | 类型 | 可否为空 | 键 |
+| ------- | ------- | ------- | ------- | ------- |
+|user_id (自增)|用户的唯一id标识|int|no|PRI|
+|nickname|用户昵称（限制15个字符）|varchar(60)|no||
+|avatar_url|头像地址|varchar(500)|yes||
+|phone_number|绑定的电话号码|varchar(20)|no||
+|created_at|创建时间|timestamp|no||
+|updated_at|更新时间|timestamp|no||
+
+```sql
+CREATE TABLE IF NOT EXISTS `user`(
+   `user_id` INT UNSIGNED AUTO_INCREMENT,
+   `nickname` VARCHAR(60) NOT NULL,
+   `avatar_url` VARCHAR(500),
+   `phone_number` VARCHAR(20) NOT NULL,
+   `create_at` DATETIME NOT NULL,
+   `updated_at` DATETIME NOT NULL,
+   PRIMARY KEY ( `user_id` )
+)ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE INDEX idx_phone_number ON user(phone_number);
+```
+ 
+ - 创建聊天记录表
+
+| 字段 | 备注 | 类型 | 可否为空 | 键 |
+| ------- | ------- | ------- | ------- | ------- |
+|conversion_id|用户拥有的会话id数组|BIGINT|no|PRI|
+|conversion_content|会话的内容，由包含role和content字段的如（{"role":“system”, content: "你是一个机器人"}）组成的以逗号分割的字符串|LONGTEXT|yes|
+|titile|标题|varchar(60)|yes||
+|user_id|用户的唯一id标识|int|no||
+|created_at|创建时间|timestamp|no||
+|updated_at|更新时间|timestamp|no|||
+
+ ```sql
+ CREATE TABLE IF NOT EXISTS `userConversations`(
+   `conversation_id` BIGINT UNSIGNED AUTO_INCREMENT,
+   `user_id` INT UNSIGNED,
+   `conversation_content` LONGTEXT,
+   `title` varChar(60),
+   `create_at` DATETIME NOT NULL,
+   `updated_at` DATETIME NOT NULL,
+   PRIMARY KEY ( `conversation_id` )
+)ENGINE=InnoDB DEFAULT CHARSET=utf8;
+// 插入后自动更新create_at和update_at字段
+DELIMITER //
+CREATE TRIGGER userConversationsInsert BEFORE INSERT ON userConversations
+FOR EACH ROW
+BEGIN
+    SET NEW.create_at = NOW();
+    SET NEW.updated_at = NOW();
+    SET NEW.conversation_content='{"role":"system","content":"You need to be friendly and keep your answers within about 20 words each."}';
+END //
+DELIMITER;
+// 更新后自动更新updated_at字段
+CREATE TRIGGER userConversationsUpdatedTime BEFORE UPDATE ON userConversations
+FOR EACH ROW SET NEW.updated_at = NOW();
+ ```
+
+### 后端配置
+- koa后端项目参数设置，进到koa-zhiyou根目录，创建config文件夹，并在新建的config文件夹中分别创建default.json、development.json和production.json。在default.json和production.json中输入{}，在default.json中输入如下配置：
+```json
+{
+    "smsAccess": {
+        "AccessKey": "阿里云sms短信服务的AccessKey",
+        "AccessSecret": "阿里云sms短信服务的AccessSecret",
+        "loginTemplateCode": "阿里云sms短信服务的短信模板",
+        "signName": "阿里云sms短信服务的签名",
+        "expireTimeSecond": 300, // 验证码在redis中的过期时间，300s
+        "reGetTime": 60  // 可重新获取验证码的时间间隔
+    },
+    "redis": {
+        "port": 6379, // redis容器端口
+        "host": "localhost" // redis容器ip
+    },
+    "mysql": {
+        "port": 3306, // mysql容器端口
+        "host": "localhost", // mysql容器ip
+        "user": "root", // mysql服务用户名
+        "password": "123456", // mysql服务密码
+        "database": "zhiyouDb" // 访问的数据库
+    },
+    "jwt": {
+        "secret": "balabala" // jwt-token的秘钥
+    },
+    "openai": {
+        "openKey": "sk-s4iy9ouvrdYAVX2P1uWeT3BlXXXXXXXXXXXXXXXXXX" // openai的秘钥
+    }
+}
+
+```
+
+### 最终运行
+
+进入到zhiyouApp
+
+```bash
+npm run start
+```
+
+进入到koa-zhiyou
+```bash
+npm run dev:watch
+```
  
