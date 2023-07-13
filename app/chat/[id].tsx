@@ -6,7 +6,7 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  Keyboard
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -18,27 +18,30 @@ import InputBox from "../../components/chatBox/inputBox";
 import { TextInput } from "react-native-paper";
 import { useHeaderHeight } from "@react-navigation/elements";
 import { fillStyle } from "../../utils/style";
+import SpeechInput from "../../components/chatBox/inputBox/SpeechInput";
 
 const Conversation = () => {
   const height = useHeaderHeight();
-  Keyboard.isVisible
+  const chatContext = useChatContext()
   return (
+    <>
       <KeyboardAvoidingView
         keyboardVerticalOffset={height}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={style.container}
-        enabled
+        enabled={!chatContext?.useSpeech}
       >
         <ChatShower />
         <InputBox />
-        
       </KeyboardAvoidingView>
+      {chatContext?.useSpeech && <SpeechInput />}
+    </>
   );
 };
 
 const style = StyleSheet.create({
   container: {
-    flex: 1
+    flex: 1,
   },
 });
 

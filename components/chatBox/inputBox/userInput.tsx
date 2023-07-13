@@ -1,11 +1,4 @@
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  Keyboard,
-  TextInput as RNInput,
-  Pressable,
-} from "react-native";
+import { View, StyleSheet, Keyboard } from "react-native";
 import { IconButton, MD2Colors, TextInput } from "react-native-paper";
 import { useChatContext } from "../../../context/chatRoomProvider";
 import { pTx, scalefontSize } from "../../../utils/style";
@@ -15,35 +8,22 @@ import { LoadingDots } from "../../custome/LoadingDots";
 
 const UserInput = () => {
   const chatContext = useChatContext();
-  const [KeyboardShow, setKeyboardShow] = React.useState(false);
-  const textInputRef = React.useRef<RNInput | null>(null);
-  const [textValue, setTextValue] = React.useState("");
-  useEffect(() => {
-    const showSubscription = Keyboard.addListener("keyboardWillShow", () =>
-      setKeyboardShow(true)
-    );
-    const hideSubscription = Keyboard.addListener("keyboardWillHide", () =>
-      setKeyboardShow(false)
-    );
-    return () => {
-      hideSubscription.remove();
-      showSubscription.remove();
-    };
-  });
+
+  
 
   return (
-    <View
-      style={[style.container, KeyboardShow ? style.containerKeyboardShow : {}]}
-    >
+    <View style={style.container}>
       <TextInput
         multiline
         dense
-        value={textValue}
-        onChangeText={(data) => setTextValue(data)}
-        ref={textInputRef}
+        disabled={chatContext?.textInputDisable}
+        autoFocus
+        value={chatContext?.textValue}
+        onChangeText={chatContext?.setTextValue}
+        ref={chatContext?.textInputRef}
         style={{
           width: pTx(200),
-          backgroundColor: textInputRef?.current?.isFocused()
+          backgroundColor: chatContext?.textInputRef?.current?.isFocused()
             ? "white"
             : "#efefef",
         }}
@@ -57,9 +37,9 @@ const UserInput = () => {
         right={
           chatContext?.isLoadingMessage ? (
             <TextInput.Icon icon={LoadingDots} />
-          ) : textValue.length == 0 ? (
-            <TextInput.Icon icon={"contactless-payment"} />
-          ) : null
+          ) : chatContext?.textValue.length != 0 || chatContext?.useSpeech ? null : (
+            <TextInput.Icon icon={"contactless-payment"} onPress={chatContext?.handleSpeechStart}/>
+          )
         }
       />
       {chatContext?.isLoadingMessage ? (
@@ -76,15 +56,15 @@ const UserInput = () => {
       ) : (
         <IconButton
           size={pTx(14)}
-          disabled={textValue.length == 0 || chatContext?.isLoadingMessage}
+          disabled={chatContext?.textValue.length == 0 || chatContext?.isLoadingMessage}
           onPress={() => {
-            setTextValue("");
-            chatContext?.handleSendMessage(textValue);
+            chatContext?.setTextValue("");
+            chatContext?.handleSendMessage(chatContext?.textValue);
           }}
           icon="arrow-up"
           mode="contained"
           containerColor={
-            textValue.length == 0 ? MD2Colors.blue100 : MD2Colors.blue600
+            chatContext?.textValue.length == 0 ? MD2Colors.blue100 : MD2Colors.blue600
           }
           iconColor="white"
         />
@@ -99,12 +79,7 @@ const style = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingBottom: pTx(20),
     paddingHorizontal: pTx(10),
-    backgroundColor: "white",
-  },
-  containerKeyboardShow: {
-    paddingBottom: pTx(10),
   },
 });
 
