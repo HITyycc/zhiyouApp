@@ -13,6 +13,8 @@ import React, { useRef, useEffect } from "react";
 import LottieView from "lottie-react-native";
 import { seconds2Min } from "../../../utils/utils";
 import { Feather } from "@expo/vector-icons";
+import AnimatedLottieView from "lottie-react-native";
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 const SpeechInput = () => {
   const chatContext = useChatContext();
@@ -20,6 +22,21 @@ const SpeechInput = () => {
     chatContext?.keyboardHeight == 0 ? pTx(200) : chatContext?.keyboardHeight;
   const lottieRef = useRef<LottieView | null>(null);
   const [timer, setTimer] = React.useState(0);
+  const randomWidth = useSharedValue(0.2);
+  const config = {
+    duration: 500
+  };
+  const amStyle = useAnimatedStyle(() => {
+    return {
+      width: withTiming(randomWidth.value, config),
+      height: withTiming(randomWidth.value, config),
+    };
+  });
+
+  useEffect(() => {
+    randomWidth.value = (keyboardHeight ?? pTx(200))*(((chatContext?.volume ?? -140)+160)/160)**1.5 ?? -140
+  }, [chatContext?.volume])
+
   useEffect(() => {
     const t = setInterval(() => {
       setTimer((pre) => pre + 1);
@@ -56,17 +73,19 @@ const SpeechInput = () => {
         ]}
       >
         <Text style={style.timer}>{seconds2Min(timer)}</Text>
+        <Animated.View style={
+          amStyle
+        }>        
         <LottieView
           ref={lottieRef}
           autoPlay
           loop
           source={require("../../../assets/lottiefiles/animation_ljzq42ot.json")}
           style={{
-            width: (keyboardHeight ?? pTx(200))*(((chatContext?.volume?? -160)+160)/160)**2,
-            height: (keyboardHeight ?? pTx(200))*(((chatContext?.volume?? -160)+160)/160)**2,
+            flex: 1,
             backgroundColor: "transparent",
           }}
-        />
+        /></Animated.View>
         <Text style={style.stopSign}>
           <Feather name="stop-circle" size={scalefontSize(1.5)} color="grey" />{" "}
           点击停止录音

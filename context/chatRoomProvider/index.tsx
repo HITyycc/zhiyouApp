@@ -90,9 +90,11 @@ export const ChatContextProvider = (props: {
 
       const { recording } = await Audio.Recording.createAsync(
         Audio.RecordingOptionsPresets.HIGH_QUALITY,
-        (status) => {
+        async (status) => {
+          if(status.durationMillis > 500){
+            console.log(recording.getURI())
+          }
           setVolume(status.metering ?? -160)
-          console.log(status);
         },
         500
       );
