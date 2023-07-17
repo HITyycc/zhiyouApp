@@ -8,9 +8,6 @@ import { LoadingDots } from "../../custome/LoadingDots";
 
 const UserInput = () => {
   const chatContext = useChatContext();
-
-  
-
   return (
     <View style={style.container}>
       <TextInput

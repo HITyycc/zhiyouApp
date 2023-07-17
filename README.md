@@ -12,7 +12,7 @@
 ## 项目介绍
 ✨智友App是一个基于 OpenAI ChatGPT 接口的机器人“智友”问答App，旨在提供陪伴式聊天体验。主要功能包括：
 
-📌基础体验：验证码登录、流式生成回答、中断流式回答、收藏问答（TODO）、语音输入（TODO）、问题素材（TODO）
+📌基础体验：验证码登录、流式生成回答、中断流式回答、语音输入、收藏问答（TODO）、问题素材（TODO）
 
 📌商业化：穿山甲广告接入（TODO）、看广告获问答次数（TODO）
 
@@ -26,6 +26,10 @@
 （1）手机号短信验证码登录&emsp;&emsp;&emsp;&emsp;（2）流式生成回答、中断流式回答、联系上下文回答
 
 <img src="./assets/git/194AD420-E128-4D51-A055-2198FB815247.GIF" alt="验证码登录" width="200"><span>&emsp;&emsp;&emsp;</span><img src="./assets/git/9605ACAB-5D2B-46D9-9FB8-D22A1AC4D27F.GIF" alt="验证码登录" width="200">
+
+(3) 语音实时输入
+
+<img src="./assets/git/50CF357A-2778-4943-91C2-8967663294E1.GIF" alt="验证码登录" width="200"><span>&emsp;&emsp;&emsp;</span>
 
 ## 目录
 - [项目介绍](#项目介绍)
@@ -50,6 +54,7 @@ zhiyou-app
 ├─context (使用React context的状态管理组件)
 │  ├─auth (路由鉴权)
 │  ├─authAxiosProvider (axios鉴权相关，基于Axios拦截器的，能够自动携带Jwt Token和Token失效Error跳转登录页的Axios实例)
+│  ├─authWebsocket.tsx（websocket鉴权相关，和authAxiosProvider同理）
 │  ├─chatRoomProvider （单个聊天窗状态Provider）
 │  ├─loadingProvider (全局Loading组件)
 ├─components (自定义组件)
@@ -163,6 +168,59 @@ zhiyou-app
 2. 遇到的坑二：在想要实现键盘出现时整个聊天窗口向上移，使用KeyboardAvoidingView包裹整个聊天窗可以随着键盘的出现和消失变化大小，但是当键盘出现后，效果上输入框上移了但是聊天记录并没有上移。经检查，原来是滑动窗高度是变了，但是相对整个滑动窗的滑动位置没有发生变化，所以需要在键盘出现后改变滑动位置到底部。同样需要保证滑动窗尺寸变化渲染完成后后再调用滑动到底部的函数，最后通过ScrollView的onLayout事件实现了这个效果。
 
 - 输入框组件：负责用户输入
+
+#### 实时语音转文字
+
+为了更方便用户的输入，本应用还支持实时语音转文字的输入方式，用户可以边语音输入边查看转换结果。想要实现这个功能，需要客户端和服务端双向数据传输，因此采用websocket协议。
+
+- 后端相关
+
+1. websocket服务：
+    koa可以使用koa-websocket在原来的服务基础上搭建websocket服务器
+    ```js 
+    import websockify from "koa-websocket"
+    const app = websockify(new Koa())
+    ```
+    上述初始化完成后使用app.ws来指代websocket服务，app.ws和app的中间件和路由相互独立。
+    websocket的通信过程为tcp三次握手 + http协议升级到websocket（返回101升级成功后代表websocket连接成功建立） + 数据传输 + websocket双方断开连接 + tcp四次挥手
+    
+    其中websocket的连接建立由koa自动完成，建立完成后会执行中间件和路由函数。中间件用于
+    websocket的预配置、路由函数用于配置websocket事件的绑定。
+
+2. websocket服务鉴权：服务的鉴权和http服务同理，客户端在创建websocket时需要携带登录Token，并实现一个中间件使用koa-jwt来对登录Token进行验证。在前端部分，和authAxios类似，为了避免关于websocket服务登陆权限代码的重新编写，同样使用React.context实现了登录token的自动携带和未授权时的跳转登录页。
+
+3. 阿里实时语音转文字服务与配置： 此处使用的是[阿里云实时语音转文字服务](https://help.aliyun.com/document_detail/84428.html?spm=a2c4g.173522.0.0.5b0f5398On3vtt)，其中需要注意服务的配置。
+
+<span>&emsp;&emsp;&emsp;</span><img src="./assets/git/alisr.png" alt="验证码登录实现流程" width="600" >
+
+本项目中选择PCM文件和16000HZ的音频采样率，后面在前端进行录音配置时需要根据这个进行配置。
+
+- 前端相关
+
+1. 授权与录音配置（以ios为例子）：
+在录音前需要使用Audio.requestPermissionsAsync()来请求授权。
+下面是录音的配置，如果不和阿里服务中的相匹配，就会无法识别。
+```js
+const quality: Audio.RecordingOptions = JSON.parse(JSON.stringify(Audio.RecordingOptionsPresets.LOW_QUALITY))
+quality.ios.sampleRate = 16000 // 采样率
+quality.ios.extension = ".pcm" // 文件格式
+quality.ios.numberOfChannels = 1  // 声道
+```
+
+2. 音量泡泡：在录音开始时可以配置每隔一段时间的录音状态检测，其中onRecordingStatusUpdate中的status的metering表示录音的音量（-160~0），可以根据这个指标设置音量泡泡的大小。
+```js
+ static createAsync = async (
+    options: RecordingOptions = RecordingOptionsPresets.LOW_QUALITY,
+    onRecordingStatusUpdate: ((status: RecordingStatus) => void) | null = null,
+    progressUpdateIntervalMillis: number | null = null
+  ): Promise<RecordingObject>
+```
+
+其中泡泡使用Lottie动画，为了泡泡大小变化衔接地更加丝滑，使用Animated库控制大小的变化。
+
+3. 录音文件的发送：同样使用onRecordingStatusUpdate的事件，在该事件中读取录音临时文件片段，由于文件的读取只有在base64格式下才能截取所需片段，所以使用base64格式读取，读取后就发送到服务端。
+
+4. 遇到的坑：在客户端使用base64格式读取临时录音文件，读取后是字符串格式，但使用websocket的send接口发送时服务端却已ASCII码格式接收。导致数据错误（如A在base64中应该是0b000000，但以Ascii码格式读取却是0b1000001。所以在发送的时候需要将base64格式的字符串转成二进制格式发送。
 
 ### 其他
 
@@ -301,6 +359,14 @@ FOR EACH ROW SET NEW.updated_at = NOW();
         "signName": "阿里云sms短信服务的签名",
         "expireTimeSecond": 300, // 验证码在redis中的过期时间，300s
         "reGetTime": 60  // 可重新获取验证码的时间间隔
+    },
+    "aliSr": {
+        "url": "wss://nls-gateway.cn-shanghai.aliyuncs.com/ws/v1",
+        "AccessKey": "实时语音转文字的AccessKey",
+        "AccessSecret": "实时语音转文字的AccessSecret",
+        "endpoint": "http://nls-meta.cn-shanghai.aliyuncs.com",
+        "apiVersion": "2019-02-28",
+        "appkey": "实时语音转文字的appkey"
     },
     "redis": {
         "port": 6379, // redis容器端口

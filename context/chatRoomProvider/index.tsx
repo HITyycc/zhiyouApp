@@ -20,9 +20,12 @@ import {
   initChatListHook,
   sseHook,
 } from "./chatRoomHook";
+import { Buffer } from "buffer"
 
 import { Audio } from "expo-av";
 import { showToast } from "../../utils/utils";
+import * as FileSystem from "expo-file-system";
+import { useAuthWebSocket } from "../authWebsocket";
 
 interface chatProviderValues {
   chatId: string;
@@ -68,8 +71,23 @@ export const ChatContextProvider = (props: {
   const [textValue, setTextValue] = React.useState("");
   const [recording, setRecoding] = React.useState<Audio.Recording>();
   const [textInputDisable, setTextInputDisable] = React.useState(false);
+  const [recordStart, setRecordStart] = React.useState(0);
+  
   // -160~0
-  const [volume, setVolume] = React.useState(-160)
+  const [volume, setVolume] = React.useState(-160);
+  const [ws, setWs] = React.useState<WebSocket>();
+  const authWebSocket = useAuthWebSocket();
+  const [sentence, setSentence] = React.useState<Array<string>>([])
+
+  React.useEffect(() => {
+    const value = sentence.join("")
+    if(value.length != 0){
+      setTextValue(value)
+    }
+    // setTextInputSelectionStart(value.length)
+    // setTextInputSelectionEnd(value.length)
+    
+  }, [sentence])
 
   const handleSpeechStart = async () => {
     try {
@@ -83,18 +101,80 @@ export const ChatContextProvider = (props: {
       setTextInputDisable(true);
       setUseSpeech(true);
       Keyboard.dismiss();
+      
+      const wsConnect = await authWebSocket?.authWebSocket({
+        wsUrl: `ws://10.249.41.229:3010/ws/speech2text`,
+        onclose: (event: WebSocketCloseEvent) => {
+          setSentence([])
+          if(event.code == 1013){
+            showToast("语音识别服务错误", "fail")
+            handleSpeechEnd()
+            // setTextValue(pre => {
+            //   setTextInputSelectionStart(1)
+            //   setTextInputSelectionEnd(pre.length)
+            //   return pre
+            // })
+          }
+          console.log("close", event);
+        },
+        onerror: (event) => {
+          console.log("err", event);
+        },
+        onmessage: (event) => {
+          const msg = JSON.parse((event as unknown as {data: string}).data)
+          if(["SentenceBegin", "SentenceEnd", "TranscriptionResultChanged"].includes(msg.header.name)){
+            setSentence(pre => {
+              const copy = [...pre]
+              copy[msg.payload.index] = msg.payload.result ?? ""
+              return copy
+            })
+          }
+        },
+        onopen: () => {
+          console.log("open");
+        } 
+      }
+      
+      )
+      setWs(wsConnect);
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
       });
 
+      const quality: Audio.RecordingOptions = JSON.parse(JSON.stringify(Audio.RecordingOptionsPresets.LOW_QUALITY))
+      quality.android.sampleRate = 16000
+      quality.ios.sampleRate = 16000
+      quality.ios.extension = ".pcm"
+      quality.ios.numberOfChannels = 1
+      
       const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY,
+        quality,
         async (status) => {
-          if(status.durationMillis > 500){
-            console.log(recording.getURI())
+          if (status.durationMillis > 500) {
+            const uri = recording.getURI();
+            if (uri != null) {
+              const fileStatus = await FileSystem.getInfoAsync(uri, {});
+              if (fileStatus.exists) {
+                setRecordStart((prePosition) => {
+                  if (fileStatus.size>0 && fileStatus.size != prePosition && wsConnect?.readyState == wsConnect?.OPEN) {
+                    const length = fileStatus.size - prePosition;
+                    (async () => {
+                      const data = await FileSystem.readAsStringAsync(uri, {
+                        encoding: "base64",
+                        position: prePosition,
+                        length,
+                      });
+                      wsConnect?.send(Buffer.from(data, "base64"))
+                    })();
+                    return fileStatus.size;
+                  }
+                  return prePosition;
+                });
+              }
+            }
           }
-          setVolume(status.metering ?? -160)
+          setVolume(status.metering ?? -160);
         },
         500
       );
@@ -104,14 +184,13 @@ export const ChatContextProvider = (props: {
     }
   };
 
-  const handleSpeechEnd = async() => {
+  const handleSpeechEnd = async () => {
+    ws?.close()
     setRecoding(undefined);
     await recording?.stopAndUnloadAsync();
-    await Audio.setAudioModeAsync(
-      {
-        allowsRecordingIOS: false,
-      }
-    );
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+    });
     setTextInputDisable(false);
     setTimeout(() => {
       textInputRef?.current?.focus();
@@ -120,22 +199,32 @@ export const ChatContextProvider = (props: {
   };
 
   React.useEffect(() => {
-    return () => {
-      if(recording){
-        recording?.setOnRecordingStatusUpdate(null)
-        recording.getStatusAsync().then(status => {
-          if(status.isRecording){
-            recording.stopAndUnloadAsync()
-          }
-        })
-        Audio.setAudioModeAsync(
-          {
-            allowsRecordingIOS: false,
-          }
-        );
+    return () =>{
+      if(ws){
+        ws.onclose = null
+        ws.onerror = null
+        ws.onmessage = null
+        ws.onopen = null
+        ws.close()
       }
     }
-  }, [recording])
+  }, [ws])
+
+  React.useEffect(() => {
+    return () => {
+      if (recording) {
+        recording?.setOnRecordingStatusUpdate(null);
+        recording.getStatusAsync().then((status) => {
+          if (status.isRecording) {
+            recording.stopAndUnloadAsync();
+          }
+        });
+        Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+        });
+      }
+    };
+  }, [recording]);
 
   React.useEffect(() => {
     if (loadingMessage.length != 0) {
@@ -194,7 +283,7 @@ export const ChatContextProvider = (props: {
         handleSpeechEnd,
         textInputDisable,
         setTextInputDisable,
-        volume
+        volume,
       }}
     >
       {props.children}
