@@ -9,10 +9,11 @@ import { SplashScreen, Stack } from "expo-router";
 import { useEffect } from "react";
 import { useColorScheme } from "react-native";
 import { AuthProvider } from "../context/auth";
-import { AuthAxiosProvider } from "../context/authAxiosProvider"
+import { AuthAxiosProvider } from "../context/authAxiosProvider";
 import { Provider as PaperProvider } from "react-native-paper";
 import { LoadingProvider } from "../context/loadingProvider";
 import { RootSiblingParent } from "react-native-root-siblings";
+import { AuthWebSocketProvider } from "../context/authWebsocket";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -53,34 +54,38 @@ function RootLayoutNav() {
         <ThemeProvider
           value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
         >
-          <PaperProvider settings={{
-            rippleEffectEnabled: false
-          }}>
+          <PaperProvider
+            settings={{
+              rippleEffectEnabled: false,
+            }}
+          >
             <LoadingProvider>
               <RootSiblingParent>
                 <AuthAxiosProvider>
-                  <Stack>
-                    <Stack.Screen
-                      name="index"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="(tabs)"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="(auth)"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="chat"
-                      options={{ headerShown: false }}
-                    />
-                    <Stack.Screen
-                      name="meTab"
-                      options={{ headerShown: false }}
-                    />
-                  </Stack>
+                  <AuthWebSocketProvider>
+                    <Stack>
+                      <Stack.Screen
+                        name="index"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="(tabs)"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="(auth)"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="chat"
+                        options={{ headerShown: false }}
+                      />
+                      <Stack.Screen
+                        name="meTab"
+                        options={{ headerShown: false }}
+                      />
+                    </Stack>
+                  </AuthWebSocketProvider>
                 </AuthAxiosProvider>
               </RootSiblingParent>
             </LoadingProvider>
