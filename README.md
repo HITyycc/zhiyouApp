@@ -20,7 +20,7 @@
 - 前端（Expo, React Hook, Typescript, Expo-Router, React-Native-paper, Axios, SSE, Lottie）
 - 后端（Koa, Typescript, Ioredis, Mysql2, Koa-Jwt, @Alicloud）
 
-🔑额外说明：此仓库只包含前端代码，后端代码见仓库[](https://github.com/HITyycc/koa-zhiyou)
+🔑额外说明：此仓库只包含前端代码，后端代码见[仓库](https://github.com/HITyycc/koa-zhiyou)
 
 ## 项目演示
 （1）手机号短信验证码登录&emsp;&emsp;&emsp;&emsp;（2）流式生成回答、中断流式回答、联系上下文回答
